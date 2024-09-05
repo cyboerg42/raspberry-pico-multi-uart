@@ -15,10 +15,10 @@
 int LEDstate = 0;
 
 // define SerialPIO ports 
-SerialPIO ser3(2,3);
-SerialPIO ser4(4,5);
-SerialPIO ser5(6,7);
-SerialPIO ser6(10,11);
+SerialPIO ser3(2, 3);
+SerialPIO ser4(4, 5);
+SerialPIO ser5(6, 7);
+SerialPIO ser6(10, 11);
 
 // define CDC interfaces; Serial will already point to it per default.
 Adafruit_USBD_CDC USBSer1;
@@ -29,22 +29,38 @@ Adafruit_USBD_CDC USBSer5;
 
 void setup() {
   // set LED pin to GPIO output mode
-  pinMode(LED, OUTPUT); 
-  // start CDC interfaces
+  pinMode(LED, OUTPUT);
+  
+  // Start all serial and USB interfaces
+  initSerialAndUSB();
+
+  // set pins of HW interfaces
+  configureHardwareUART();
+
+  // start HW & PIO interfaces
+  startAllInterfaces();
+}
+
+void initSerialAndUSB() {
   Serial.begin(BAUDRATE);
   USBSer1.begin(BAUDRATE);
   USBSer2.begin(BAUDRATE);
   USBSer3.begin(BAUDRATE);
   USBSer4.begin(BAUDRATE);
   USBSer5.begin(BAUDRATE);
-  // why?! but it won't work without...
-  delay(1000);
-  // set pins of HW interfaces
+  
+  // A small delay to ensure all USB CDCs are initialized properly
+  delay(500); 
+}
+
+void configureHardwareUART() {
   Serial1.setTX(12);
   Serial1.setRX(13);
   Serial2.setTX(8);
   Serial2.setRX(9);
-  // start HW & PIO interfaces
+}
+
+void startAllInterfaces() {
   Serial1.begin(BAUDRATE);
   Serial2.begin(BAUDRATE);
   ser3.begin(BAUDRATE);
@@ -55,21 +71,33 @@ void setup() {
 
 // runs on core 0; core 0 also handles USB and various other stuff.
 void loop() {
-  // UART Buffer
-  int ch;
-  // USB CDC -> UART
-  ch = Serial.read();
-  if (ch > 0) ser3.write(ch);
-  ch = USBSer1.read();
-  if (ch > 0) ser4.write(ch);
-  ch = USBSer2.read();
-  if (ch > 0) ser5.write(ch);
-  ch = USBSer3.read();
-  if (ch > 0) Serial2.write(ch);
-  ch = USBSer4.read();
-  if (ch > 0) ser6.write(ch);
-  ch = USBSer5.read();
-  if (ch > 0) Serial1.write(ch);
+  USBtoUART();
+  LED();
+}
+
+// runs on core 1
+void loop1() {
+  UARTtoUSB();
+}
+
+void USBtoUART() {
+  //  USB CDC -> UART communication
+  forwardData(Serial, ser3);
+  forwardData(USBSer1, ser4);
+  forwardData(USBSer2, ser5);
+  forwardData(USBSer3, Serial2);
+  forwardData(USBSer4, ser6);
+  forwardData(USBSer5, Serial1);
+}
+
+void forwardData(Stream &input, Stream &output) {
+  int ch = input.read();
+  if (ch > 0) {
+    output.write(ch);
+  }
+}
+
+void LED() {
   // blink LED
   if (delay_without_delaying(500)) {
     LEDstate = !LEDstate;
@@ -77,28 +105,18 @@ void loop() {
   }
 }
 
-// runs on core 1
-void loop1() {
-  // UART buffer
-  int ch;
-  // UART -> USB CDC
-  ch = ser3.read();
-  if (ch > 0) Serial.write(ch);
-  ch = ser4.read();
-  if (ch > 0) USBSer1.write(ch);
-  ch = ser5.read();
-  if (ch > 0) USBSer2.write(ch);
-  ch = Serial2.read();
-  if (ch > 0) USBSer3.write(ch);
-  ch = ser6.read();
-  if (ch > 0) USBSer4.write(ch);
-  ch = Serial1.read();
-  if (ch > 0) USBSer5.write(ch);
+void UARTtoUSB() {
+  // UART -> USB CDC communication
+  forwardData(ser3, Serial);
+  forwardData(ser4, USBSer1);
+  forwardData(ser5, USBSer2);
+  forwardData(Serial2, USBSer3);
+  forwardData(ser6, USBSer4);
+  forwardData(Serial1, USBSer5);
 }
 
 // Helper: non-blocking "delay" alternative.
 boolean delay_without_delaying(unsigned long time) {
-  // return false if we're still "delaying", true if time ms has passed.
   static unsigned long previousmillis = 0;
   unsigned long currentmillis = millis();
   if (currentmillis - previousmillis >= time) {
