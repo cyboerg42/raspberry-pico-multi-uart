@@ -1,11 +1,10 @@
 This sketch is a PoC for using multiple CDC interfaces and PIO on a RP2040.
 
-CFG_TUD_CDC must be at least 5.
+CFG_TUD_CDC must be at least 8.
 
 Config file is located in the library. (Adafruit_TinyUSB_Arduino/src/arduino/ports/rp2040/tusb_config_rp2040.h)
 
-
-You may also want to widen the _desc_cfg_buffer to 512.
+You need also to widen the _desc_cfg_buffer to 1024.
 
 It's located in Adafruit_TinyUSB_Arduino/src/arduino/Adafruit_USBD_Device.h
 
