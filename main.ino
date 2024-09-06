@@ -145,9 +145,11 @@ void handleCmd() {
     } else if (ch == '\b' && cmdBuffer.length() > 0) {
       cmdBuffer.remove(cmdBuffer.length() - 1);
       USBSerCmd.print("\b \b");
+      USBSerCmd.flush();
     } else if (ch == 127 && cmdBuffer.length() > 0) {
       cmdBuffer.remove(cmdBuffer.length() - 1);
       USBSerCmd.print("\b \b");
+      USBSerCmd.flush();
     } else if (ch >= 32 && ch <= 126) {
       cmdBuffer += ch;
       USBSerCmd.write(ch);
@@ -315,8 +317,8 @@ bool loadConfigFromEEPROM() {
 
   for (int i = 0; i < 6; i++) {
     EEPROM.get(address, serialBaudRates[i]);
-    // Validate baud rate (should be within realistic ranges like 300 to 921600)
-    if (serialBaudRates[i] < 300 || serialBaudRates[i] > 921600) {
+    // Validate baud rate (should be within realistic ranges like 300 to 115200)
+    if (serialBaudRates[i] < 300 || serialBaudRates[i] > 115200) {
       return false; // Invalid baud rate
     }
     address += sizeof(int);
