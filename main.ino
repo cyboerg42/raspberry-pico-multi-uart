@@ -32,6 +32,8 @@ Adafruit_USBD_CDC USBSer3;  // ACM3
 Adafruit_USBD_CDC USBSer4;  // ACM4
 Adafruit_USBD_CDC USBSer5;  // ACM5
 Adafruit_USBD_CDC USBSerCmd; // Command interface
+String cmdBuffer = "";
+
 
 int serialBaudRates[6] = {BAUDRATE, BAUDRATE, BAUDRATE, BAUDRATE, BAUDRATE, BAUDRATE}; // Store baudrates
 int serialTXPins[6] = {2, 4, 6, 8, 10, 12};  // Default TX pins
@@ -134,10 +136,9 @@ boolean delay_without_delaying(unsigned long time) {
 }
 
 void handleCmd() {
-  static String cmdBuffer = "";
   while (USBSerCmd.available()) {
     char ch = USBSerCmd.read();
-    if (ch == '\r') {
+    if (ch == '\r' || ch == '\n') {
       USBSerCmd.print("\n\r");
       processCmd(cmdBuffer);
       cmdBuffer = "";
@@ -150,6 +151,7 @@ void handleCmd() {
     } else if (ch >= 32 && ch <= 126) {
       cmdBuffer += ch;
       USBSerCmd.write(ch);
+      USBSerCmd.flush();
     }
   }
 }
@@ -170,6 +172,7 @@ void processCmd(String cmd) {
     printHelp();
   }
   USBSerCmd.print("# ");
+  USBSerCmd.flush();
 }
 
 void printHelp() {
@@ -312,8 +315,8 @@ bool loadConfigFromEEPROM() {
 
   for (int i = 0; i < 6; i++) {
     EEPROM.get(address, serialBaudRates[i]);
-    // Validate baud rate (should be within realistic ranges like 300 to 115200)
-    if (serialBaudRates[i] < 300 || serialBaudRates[i] > 115200) {
+    // Validate baud rate (should be within realistic ranges like 300 to 921600)
+    if (serialBaudRates[i] < 300 || serialBaudRates[i] > 921600) {
       return false; // Invalid baud rate
     }
     address += sizeof(int);
